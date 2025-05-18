@@ -20,20 +20,21 @@ def script():
 @app.route('/get-data', methods=['GET'])
 def get_data():
     try:
-        with open("network_traffic_summary.json", 'r') as f:
+        with open("SCAM.json", 'r') as f:
             data = json.load(f)
         return jsonify(data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 # API: Return alert instructions in multiple languages
+# API: Return alert instructions in multiple languages
 @app.route('/alert', methods=['GET'])
 def get_alerts():
     try:
         return jsonify({
             "en": "Potential threat detected in your network. Please review traffic logs.",
-            "ku": "هێرشێکی گومانلێکراو دۆزرایەوە. تکایە ترافیکی تۆڕەکەت بپشکنە.",
-            "ar": "تم اكتشاف نشاط غير طبيعي. يرجى التحقق من سجلات الشبكة."
+            "kn": "ನಿಮ್ಮ ಜಾಲದಲ್ಲಿ ಶಂಕಾಸ್ಪದ ಬೆದರಿಕೆ ಪತ್ತೆಯಾಗಿದೆ. ದಯವಿಟ್ಟು ಟ್ರಾಫಿಕ್ ಲಾಗ್‌ಗಳನ್ನು ಪರಿಶೀಲಿಸಿ.",
+            "hi": "आपके नेटवर्क में संभावित खतरा पाया गया है। कृपया ट्रैफ़िक लॉग की समीक्षा करें।"
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -53,14 +54,14 @@ def get_emails():
 def save_email():
     try:
         email = request.json.get("email")
-        with open("emails.json", "r") as f:
+        with open("email.json", "r") as f:
             emails = json.load(f)
     except:
         emails = []
 
     if email and email not in emails:
         emails.append(email)
-        with open("emails.json", "w") as f:
+        with open("email.json", "w") as f:
             json.dump(emails, f, indent=4)
 
     return jsonify({"message": "Email saved"}), 200

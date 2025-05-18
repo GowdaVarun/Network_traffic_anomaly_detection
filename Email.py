@@ -1,141 +1,160 @@
 import json
+import time
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import smtplib
-import time
-import re
 import os
+import logging
 from dotenv import load_dotenv
-from groq import Groq
 
+# Load environment variables
 load_dotenv()
 
-# Configs
-network_file_path = "network_traffic_summary.json"
-email_file_path = "emails.json"
-GROQ_API_KEY = os.getenv('GROQ_API_KEY')  # Add to .env
-client = Groq(api_key=GROQ_API_KEY)
+# Configuration constants
+NETWORK_FILE_PATH = "SCAM.json"
+EMAIL_FILE_PATH = "email.json"
+SENDER_EMAIL = os.getenv("SENDER_EMAIL")
+APP_PASSWORD = os.getenv("APP_PASSWORD")
 
-# SMTP Config
-sender_email = "syedmuzammilh.cs23@rvce.edu.in"
-smtp_server = "smtp.gmail.com"
-smtp_port = 587
-sender_password = "cse@1362"
+# Alert templates in multiple languages
+alert_templates = {
+    "1": {
+        "en": "⚠️ Detected {count} Port Scanning attempts on your network.",
+        "kn": "⚠️ ನಿಮ್ಮ ಜಾಲದಲ್ಲಿ {count} ಪೋರ್ಟ್ ಸ್ಕ್ಯಾನಿಂಗ್ ಪ್ರಯತ್ನಗಳು ಕಂಡುಬಂದಿವೆ.",
+        "te": "⚠️ మీ నెట్‌వర్క్‌లో {count} పోర్ట్ స్కానింగ్ ప్రయత్నాలు గుర్తించబడ్డాయి."
+    },
+    "2": {
+        "en": "🚨 Detected {count} potential Denial of Service (DoS) attacks.",
+        "kn": "🚨 {count} ಸಾಧ್ಯವಿರುವ DoS ದಾಳಿಗಳನ್ನು ಪತ್ತೆಹಚ್ಚಲಾಗಿದೆ.",
+        "te": "🚨 {count} DoS దాడులు గుర్తించబడ్డాయి."
+    },
+    "3": {
+        "en": "🔐 Detected {count} Brute Force login attempts.",
+        "kn": "🔐 {count} ಬ್ರುಟ್ ಫೋರ್ಸ್ ಲಾಗಿನ್ ಪ್ರಯತ್ನಗಳನ್ನು ಕಂಡುಹಿಡಿಯಲಾಗಿದೆ.",
+        "te": "🔐 {count} బ్రూట్ ఫోర్స్ లాగిన్ ప్రయత్నాలు గుర్తించబడ్డాయి."
+    }
+}
 
-# Load data
-with open(network_file_path, "r") as file:
-    data = json.load(file)
-with open(email_file_path, "r") as file:
-    email_data = json.load(file)
-
-emails = email_data['emails']
-total_anomalies = data["total_anomalies"]
-anomalies_by_type = data["anomalies_by_type"]
-
-anomalies_timestamped = {}
-for key in anomalies_by_type.keys():
-    anomalies_timestamped[key] = None
-
-def analyze_with_groq(prompt):
-    print("⏳ Sending request to Groq...")
+def load_emails():
+    """Load recipient email addresses from JSON file"""
     try:
-        chat_completion = client.chat.completions.create(
-            model="mixtral-8x7b-32768",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            max_tokens=2048,
-        )
-        return chat_completion.choices[0].message.content
+        with open(EMAIL_FILE_PATH, "r") as f:
+            return json.load(f).get("emails", [])
     except Exception as e:
-        print("❌ Error:", e)
-        return None
+        logging.error(f"Error loading emails: {e}")
+        return []
 
-def get_response(attack_type):
-    prompt = f"""
-Generate an email to notify a non-technical user about a detected network anomaly of type '{attack_type}'. Respond only with a JSON object containing the email body in three languages: English (en), Kannada (kn), and Telugu (te). The format should be:
-
-{{
-    "en": "English text here.",
-    "kn": "Kannada translation here.",
-    "te": "Telugu translation here."
-}}
-
-The content in each language should include:
-
-1. A short and clear explanation of what the anomaly '{attack_type}' means in simple words.
-2. A possible reason for why this might have happened, without using technical terms.
-3. Easy-to-follow steps that a regular home user can do, like:
-   - Restarting the Wi-Fi router.
-   - Updating passwords.
-   - Checking connected devices.
-4. Maintain a polite and friendly tone. Don't create fear. Avoid any technical jargon or advanced solutions.
-
-The instructions should be practical and realistic for a person without any technical background.
-
-Do NOT include any heading or explanation — only output the JSON object.
-"""
-    return analyze_with_groq(prompt)
-
-def send_email(sender_email, receiver_email, subject, body, smtp_server, smtp_port, sender_password):
-    msg = MIMEMultipart()
-    msg['From'] = sender_email
-    msg['To'] = receiver_email
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
-
-    try:
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()
-            server.login(sender_email, sender_password)
-            server.sendmail(sender_email, receiver_email, msg.as_string())
-            print(f"✅ Email sent to {receiver_email}")
-    except Exception as e:
-        print(f"❌ Failed to send email to {receiver_email}: {e}")
-
-def send_all_mails(emails, alert_body):
-    for recipient in emails:
-        send_email(sender_email, recipient, "📡 Network Attack Alert", alert_body, smtp_server, smtp_port, sender_password)
-
-def create_email_body(json_str):
-    match = re.search(r"\{.*\}", json_str, re.DOTALL)
-    if not match:
-        raise ValueError("No JSON object found in Groq response.")
-    data = json.loads(match.group(0).strip())
-
+def create_multilingual_body(anomalies):
+    """Create email body with alerts in multiple languages"""
+    # anomalies is a dict with keys=anomaly_type, values=count
+    en_msgs, kn_msgs, te_msgs = [], [], []
+    
+    for key, count in anomalies.items():
+        template = alert_templates.get(key)
+        if template:
+            en_msgs.append(template['en'].format(count=count))
+            kn_msgs.append(template['kn'].format(count=count))
+            te_msgs.append(template['te'].format(count=count))
+    
     return (
-        f"📘 Instructions in English:\n{data['en']}\n\n"
-        f"📗 ಕನ್ನಡದಲ್ಲಿ ಸೂಚನೆಗಳು:\n{data['kn']}\n\n"
-        f"📕 తెలుగులో సూచనలు:\n{data['te']}"
+        "📘 English:\n" + "\n".join(en_msgs) + "\n\n"
+        "📗 ಕನ್ನಡ:\n" + "\n".join(kn_msgs) + "\n\n"
+        "📕 తెలుగు:\n" + "\n".join(te_msgs)
     )
 
-def extract_and_save_json(text, output_filename):
-    match = re.search(r"\{.*\}", text, re.DOTALL)
-    if not match:
-        raise ValueError("No JSON object found in the input text.")
-    data = json.loads(match.group(0).strip())
-    with open(output_filename, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+def send_email(recipient, subject, body):
+    """Send an email with the given subject and body to the recipient"""
+    msg = MIMEMultipart()
+    msg["From"] = f"Python Alert System <{SENDER_EMAIL}>"
+    msg["To"] = recipient
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "plain"))
+    
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(SENDER_EMAIL, APP_PASSWORD)
+            server.sendmail(SENDER_EMAIL, recipient, msg.as_string())
+        logging.info(f"Email sent to {recipient}")
+        return True
+    except Exception as e:
+        logging.error(f"Failed to send email to {recipient}: {e}")
+        return False
 
-print("🚀 Monitoring anomalies...")
-while True:
-    current_time = datetime.now()
-    if total_anomalies > 0:
-        for key in anomalies_timestamped:
-            if key == "1":
-                attack_type = "Port Scanning"
-            elif key == "2":
-                attack_type = "Denial-of-Service (DoS)"
+def monitor_and_alert(poll_interval=10, cooldown_minutes=5):
+    """Continuously monitor network traffic data and send alerts when anomalies are detected"""
+    last_sent_time = None
+    logging.info("Monitoring started... Press Ctrl+C to stop.")
+    
+    while True:
+        try:
+            with open(NETWORK_FILE_PATH, "r") as f:
+                data = json.load(f)
+        except Exception as e:
+            logging.error(f"Could not read network data: {e}")
+            time.sleep(poll_interval)
+            continue
+        
+        total_anomalies = data.get("total_anomalies", 0)
+        anomalies = data.get("anomalies_by_type", {})
+        now = datetime.now()
+        
+        if total_anomalies > 0 and anomalies:
+            if last_sent_time is None or (now - last_sent_time) > timedelta(minutes=cooldown_minutes):
+                logging.warning(f"{total_anomalies} anomalies detected. Sending alert...")
+                
+                # Compose alert with counts
+                alert_body = create_multilingual_body(anomalies)
+                subject = "🚨 Network Threat Alert"
+                
+                for email in load_emails():
+                    send_email(email, subject, alert_body)
+                
+                last_sent_time = now
+                logging.info(f"Alert sent at {now.strftime('%H:%M:%S')}")
             else:
-                attack_type = "Unknown Network Threat"
+                logging.info(f"Alert recently sent, waiting cooldown. ({(now - last_sent_time).seconds}s elapsed)")
+        else:
+            logging.info(f"[{now.strftime('%H:%M:%S')}] No anomalies detected.")
+        
+        time.sleep(poll_interval)
 
-            last_alert_time = anomalies_timestamped[key]
-            if last_alert_time is None or (current_time - last_alert_time > timedelta(minutes=1)):
-                print(f"\n🛑 Detected: {attack_type} at {current_time.strftime('%H:%M:%S')}")
-                response = get_response(attack_type)
-                if response:
-                    extract_and_save_json(response, "alert.json")
-                    alert_body = create_email_body(response)
-                    send_all_mails(emails, alert_body)
-                    anomalies_timestamped[key] = current_time
-    time.sleep(10)
+def trigger_email():
+    """Function to be called from external modules to trigger immediate email alerts"""
+    try:
+        with open(NETWORK_FILE_PATH, "r") as f:
+            data = json.load(f)
+            
+        total_anomalies = data.get("total_anomalies", 0)
+        anomalies = data.get("anomalies_by_type", {})
+        
+        if total_anomalies > 0 and anomalies:
+            logging.warning(f"External trigger: {total_anomalies} anomalies detected. Sending alert...")
+            
+            # Compose alert with counts
+            alert_body = create_multilingual_body(anomalies)
+            subject = "🚨 Network Threat Alert (Triggered)"
+            
+            success = True
+            for email in load_emails():
+                if not send_email(email, subject, alert_body):
+                    success = False
+            
+            return success
+        else:
+            logging.info("External trigger: No anomalies to report")
+            return True
+    except Exception as e:
+        logging.error(f"External email trigger failed: {e}")
+        return False
+
+# Add logging configuration
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+# Main execution
+if __name__ == "__main__":
+    monitor_and_alert()

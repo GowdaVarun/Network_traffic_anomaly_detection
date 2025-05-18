@@ -5,3 +5,7 @@ flask-cors
 joblib
 scikit-learn
 dotenv
+groq
+numpy
+pandas
+
