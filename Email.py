@@ -47,11 +47,10 @@ def load_emails():
 
 def create_multilingual_body(anomalies):
     """Create email body with alerts in multiple languages"""
-    # anomalies is a dict with keys=anomaly_type, values=count
     en_msgs, kn_msgs, te_msgs = [], [], []
     
     for key, count in anomalies.items():
-        template = alert_templates.get(key)
+        template = alert_templates.get(str(key))
         if template:
             en_msgs.append(template['en'].format(count=count))
             kn_msgs.append(template['kn'].format(count=count))
@@ -95,8 +94,9 @@ def monitor_and_alert(poll_interval=10, cooldown_minutes=5):
             time.sleep(poll_interval)
             continue
         
-        total_anomalies = data.get("total_anomalies", 0)
-        anomalies = data.get("anomalies_by_type", {})
+        summary = data.get("anomaly_summary", {})
+        total_anomalies = summary.get("total_anomalies", 0)
+        anomalies = summary.get("anomalies_by_type", {})
         now = datetime.now()
         
         if total_anomalies > 0 and anomalies:
@@ -125,8 +125,9 @@ def trigger_email():
         with open(NETWORK_FILE_PATH, "r") as f:
             data = json.load(f)
             
-        total_anomalies = data.get("total_anomalies", 0)
-        anomalies = data.get("anomalies_by_type", {})
+        summary = data.get("anomaly_summary", {})
+        total_anomalies = summary.get("total_anomalies", 0)
+        anomalies = summary.get("anomalies_by_type", {})
         
         if total_anomalies > 0 and anomalies:
             logging.warning(f"External trigger: {total_anomalies} anomalies detected. Sending alert...")

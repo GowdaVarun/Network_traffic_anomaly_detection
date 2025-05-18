@@ -1,264 +1,133 @@
-/* Styles.css - Network Anomaly Detection System Dashboard */
-
-/* Base Styles and Reset */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
+/* App.css */
 
 body {
-  background-color: #f5f7fa;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f4f6f8;
   color: #333;
-  line-height: 1.6;
 }
 
-.container {
+.App {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
 }
 
-/* Header Styles */
-.header {
+header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+header h1 {
+  font-size: 2.2em;
+  margin-bottom: 10px;
+  color: #2c3e50;
+}
+
+header p {
+  color: #7f8c8d;
+  font-style: italic;
+}
+
+/* Metric Cards */
+.metrics {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 20px 0;
-  border-bottom: 2px solid #e0e0e0;
-  margin-bottom: 30px;
-  position: relative;
-}
-
-.header h1 {
-  font-size: 28px;
-  color: #2a3f5f;
-  text-align: center;
-  flex-grow: 1;
-}
-
-.text-link {
-  color: #3498db;
-  text-decoration: none;
-  font-weight: 600;
-  transition: color 0.3s ease;
-  position: absolute;
-  left: 0;
-}
-
-.text-link:hover {
-  color: #2980b9;
-  text-decoration: underline;
-}
-
-.language-switcher {
-  display: flex;
-  gap: 10px;
-}
-
-.language-switcher span {
-  cursor: pointer;
-  padding: 5px 10px;
-  background-color: #f0f0f0;
-  border-radius: 5px;
-  font-weight: 500;
-  transition: background-color 0.3s ease;
-}
-
-.language-switcher span:hover {
-  background-color: #e0e0e0;
-}
-
-/* Alert Message Styles */
-.message {
-  background-color: #ff6384;
-  color: white;
-  padding: 20px;
-  border-radius: 10px;
-  text-align: center;
-  margin-bottom: 30px;
-  animation: pulse 2s infinite;
-  box-shadow: 0 5px 15px rgba(255, 99, 132, 0.3);
-}
-
-.message h2 {
-  font-size: 24px;
-  margin-bottom: 10px;
-}
-
-.message p {
-  font-size: 18px;
-  font-weight: 500;
-}
-
-@keyframes pulse {
-  0% {
-    box-shadow: 0 5px 15px rgba(255, 99, 132, 0.3);
-  }
-  50% {
-    box-shadow: 0 5px 30px rgba(255, 99, 132, 0.6);
-  }
-  100% {
-    box-shadow: 0 5px 15px rgba(255, 99, 132, 0.3);
-  }
-}
-
-/* Instructions Section */
-.instructions {
-  background-color: #fff;
-  padding: 25px;
-  border-radius: 10px;
-  margin-bottom: 30px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-}
-
-.instructions h2 {
-  color: #2a3f5f;
-  margin-bottom: 15px;
-  font-size: 22px;
-}
-
-.instructions p {
-  margin-bottom: 15px;
-  font-size: 16px;
-  color: #555;
-}
-
-/* Dashboard Metrics Styles */
-.dashboard-container {
-  margin-bottom: 30px;
-}
-
-.metrics-row {
-  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
   gap: 20px;
-  margin-bottom: 20px;
 }
 
 .card {
-  background-color: #fff;
-  flex: 1;
-  padding: 25px;
+  flex: 1 1 22%;
+  background-color: #ffffff;
   border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease;
 }
 
 .card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px);
 }
 
 .card h3 {
-  color: #2a3f5f;
-  margin-bottom: 15px;
-  font-size: 18px;
+  color: #2980b9;
+  margin-bottom: 10px;
+}
+
+.card p {
+  font-size: 1.3em;
+  font-weight: bold;
+}
+
+/* Chart Sections */
+.charts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 30px;
+  margin-bottom: 50px;
+  justify-content: space-between;
+}
+
+.chart-block {
+  flex: 1 1 30%;
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.chart-block h3 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #2c3e50;
+}
+
+/* IP Section */
+.ip-section {
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+  margin-bottom: 40px;
+}
+
+.ip-lists > div {
+  flex: 1;
+  background-color: #ffffff;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+}
+
+.ip-lists h4 {
   border-bottom: 1px solid #e0e0e0;
   padding-bottom: 10px;
+  margin-bottom: 15px;
+  color: #34495e;
 }
 
-.metric-value {
-  font-size: 36px;
-  font-weight: 700;
-  color: #36a2eb;
-  text-align: center;
-  padding: 15px 0;
+.ip-lists ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
-.metric-details {
-  padding: 10px 0;
+.ip-lists li {
+  padding: 6px 0;
+  border-bottom: 1px dashed #eaeaea;
+  font-size: 0.95em;
+  color: #555;
 }
 
-.metric-details p {
-  color: #666;
-  font-size: 15px;
-}
-
-/* Graph Button Styles */
-.graph-button {
-  background-color: #36a2eb;
-  color: white;
-  border: none;
-  padding: 12px 25px;
-  font-size: 16px;
-  font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.2s ease;
-  box-shadow: 0 3px 10px rgba(54, 162, 235, 0.3);
-}
-
-.graph-button:hover {
-  background-color: #2980b9;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(54, 162, 235, 0.4);
-}
-
-.graph-button:active {
-  transform: translateY(0);
-}
-
-/* Chart Container */
-.chart-container {
-  width: 100%;
-  max-width: 500px;
-  margin: 2rem auto;
-  background-color: white;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-}
-
-/* Footer Styles */
+/* Footer */
 footer {
   text-align: center;
-  padding: 20px 0;
-  color: #777;
-  font-size: 14px;
-  border-top: 1px solid #e0e0e0;
+  padding: 15px;
+  color: #7f8c8d;
+  font-size: 0.9em;
+  border-top: 1px solid #ddd;
   margin-top: 40px;
-}
-
-/* Responsive Styles */
-@media (max-width: 768px) {
-  .header {
-    flex-direction: column;
-    text-align: center;
-    gap: 15px;
-  }
-  
-  .text-link {
-    position: static;
-  }
-  
-  .metrics-row {
-    flex-direction: column;
-  }
-  
-  .card {
-    margin-bottom: 15px;
-  }
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.dashboard-container {
-  animation: fadeIn 0.5s ease-out;
-}
-
-/* Chart.js Customizations */
-canvas {
-  max-width: 100%;
-  height: auto !important;
 }

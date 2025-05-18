@@ -5,13 +5,16 @@ from collections import deque
 import time
 import logging
 from anomaly_generator import generate_anomaly_packets
+from sklearn.preprocessing import LabelEncoder
+import joblib
+import ipaddress
 
 logging.basicConfig(level=logging.INFO)
 
 BATCH_SIZE = 100
 packet_window = deque(maxlen=BATCH_SIZE)
 EXPORT_FILE = "captured_packets.csv"
-ANOMALY_INJECT_INTERVAL = 5  # seconds
+ANOMALY_INJECT_INTERVAL = 10  # seconds
 
 def ip_to_int(ip):
     try:
@@ -78,6 +81,79 @@ def start_capture(interface="wlp1s0", duration=300):
     finally:
         cap.close()
         print("Monitoring Ended.")
+        create_cleaned_csv()
+
+
+
+def create_cleaned_csv(raw_csv_path="captured_packets.csv", clean_csv_path="cleaned_packets.csv"):
+    if not os.path.exists(raw_csv_path):
+        raise FileNotFoundError(f"Raw CSV file {raw_csv_path} not found!")
+
+    logging.info(f"Processing raw packet data from {raw_csv_path}")
+    
+    try:
+        df_raw = pd.read_csv(raw_csv_path, header=0)
+    except Exception as e:
+        raise ValueError(f"Failed to read raw CSV: {e}")
+
+    logging.info(f"Loaded raw data with {len(df_raw)} rows")
+
+    required_columns = [
+        'timestamp', 'src_ip', 'dst_ip',
+        'src_port', 'dst_port', 'protocol',
+        'flags', 'length', 'ttl', 'window_size', 'label'
+    ]
+    if list(df_raw.columns) != required_columns:
+        df_raw.columns = required_columns  # fallback if no header in file
+
+    df_clean = pd.DataFrame()
+    df_clean['timestamp'] = df_raw['timestamp']
+    
+    def ip_to_int_safe(ip):
+        try:
+            return int(ipaddress.IPv4Address(str(ip)))
+        except Exception as e:
+            logging.warning(f"Bad IP: {ip} ({e})")
+            return 0
+
+    df_clean['src_ip'] = df_raw['src_ip'].apply(ip_to_int_safe)
+    df_clean['dst_ip'] = df_raw['dst_ip'].apply(ip_to_int_safe)
+    df_clean['src_port'] = pd.to_numeric(df_raw['src_port'], errors='coerce').fillna(0).astype(int)
+    df_clean['dst_port'] = pd.to_numeric(df_raw['dst_port'], errors='coerce').fillna(0).astype(int)
+
+    protocol_encoder = LabelEncoder()
+    df_clean['protocol'] = protocol_encoder.fit_transform(df_raw['protocol'].astype(str))
+    joblib.dump(protocol_encoder, 'protocol_encoder.joblib')
+
+    df_clean['flags'] = df_raw['flags'].apply(
+        lambda x: int(str(x), 16) if str(x).startswith('0x') else x
+    )
+    df_clean['flags'] = pd.to_numeric(df_clean['flags'], errors='coerce').fillna(0).astype(int)
+
+    df_clean['length'] = pd.to_numeric(df_raw['length'], errors='coerce').fillna(0).astype(int)
+    df_clean['ttl'] = pd.to_numeric(df_raw['ttl'], errors='coerce').fillna(0).astype(int)
+    df_clean['window_size'] = pd.to_numeric(df_raw['window_size'], errors='coerce').fillna(0).astype(int)
+
+    df_clean['label'] = df_raw['label'].astype(str).str.lower().map({"good": 0, "bad": 1})
+    df_clean = df_clean.dropna(subset=['label'])
+
+    zero_ip = ip_to_int_safe("0.0.0.0")
+    df_clean = df_clean[~((df_clean['src_ip'] == zero_ip) & (df_clean['label'] == 0))]
+    df_clean = df_clean[~((df_clean['dst_ip'] == zero_ip) & (df_clean['label'] == 0))]
+
+    df_clean = df_clean.dropna()
+
+    if df_clean.empty:
+        logging.warning("No valid rows after cleaning. CSV will not be saved.")
+        return
+
+    try:
+        df_clean.to_csv(clean_csv_path, index=False)
+        logging.info(f"Saved cleaned data to {clean_csv_path}, rows: {len(df_clean)}")
+    except Exception as e:
+        logging.error(f"Failed to write cleaned CSV: {e}")
+        raise
+
 
 if __name__ == "__main__":
     start_capture()
