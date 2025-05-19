@@ -4,7 +4,7 @@ import os
 from collections import deque
 import time
 import logging
-from anomaly_generator import generate_anomaly_packets
+# from anomaly_generator import generate_anomaly_packets
 from sklearn.preprocessing import LabelEncoder
 import joblib
 import ipaddress
@@ -51,7 +51,11 @@ def start_capture(interface="wlp1s0", duration=300):
     print("Real-time Packet Monitoring Started...")
     start_time = time.time()
     last_injection = time.time()
-
+    # Clear the captured_packets.csv file if it exists
+    if os.path.exists(EXPORT_FILE):
+        with open(EXPORT_FILE, 'w') as f:
+            pass
+        logging.info(f"Cleared the contents of {EXPORT_FILE}")
     try:
         for packet in cap.sniff_continuously():
             current_time = time.time()
@@ -64,12 +68,12 @@ def start_capture(interface="wlp1s0", duration=300):
             if features:
                 packet_window.append(features)
 
-            # Periodic anomaly injection
-            if current_time - last_injection > ANOMALY_INJECT_INTERVAL:
-                anomaly_packets = generate_anomaly_packets(count=10)
-                export_to_csv(anomaly_packets)
-                last_injection = current_time
-                logging.info("🔴 Injected anomaly packets")
+            # # Periodic anomaly injection
+            # if current_time - last_injection > ANOMALY_INJECT_INTERVAL:
+            #     anomaly_packets = generate_anomaly_packets(count=10)
+            #     export_to_csv(anomaly_packets)
+            #     last_injection = current_time
+            #     logging.info("🔴 Injected anomaly packets")
 
             # Export window when full
             if len(packet_window) == BATCH_SIZE:
@@ -82,8 +86,16 @@ def start_capture(interface="wlp1s0", duration=300):
         cap.close()
         print("Monitoring Ended.")
         create_cleaned_csv()
+# this should be working before EL
+#VARUN AND SUMADHVA'S PART 
 
+#UPDATED LOGIC HERE .....->>>>
 
+from sklearn.ensemble import IsolationForest
+from sklearn.svm import OneClassSVM
+from sklearn.neighbors import LocalOutlierFactor
+from sklearn.cluster import KMeans
+import numpy as np
 
 def create_cleaned_csv(raw_csv_path="captured_packets.csv", clean_csv_path="cleaned_packets.csv"):
     if not os.path.exists(raw_csv_path):
@@ -141,18 +153,53 @@ def create_cleaned_csv(raw_csv_path="captured_packets.csv", clean_csv_path="clea
     df_clean = df_clean[~((df_clean['src_ip'] == zero_ip) & (df_clean['label'] == 0))]
     df_clean = df_clean[~((df_clean['dst_ip'] == zero_ip) & (df_clean['label'] == 0))]
 
+
     df_clean = df_clean.dropna()
 
     if df_clean.empty:
         logging.warning("No valid rows after cleaning. CSV will not be saved.")
         return
 
+    # ========== UNSUPERVISED ANOMALY DETECTION ==========
+    df_features = df_clean.drop(columns=["timestamp", "label"])
+    models = {
+        "IsolationForest": IsolationForest(contamination=0.1, random_state=42),
+        "OneClassSVM": OneClassSVM(nu=0.1, kernel="rbf"),
+        "LOF": LocalOutlierFactor(n_neighbors=20, contamination=0.1),
+        "KMeans": KMeans(n_clusters=2, random_state=42)
+    }
+
+    unsupervised_preds = pd.DataFrame(index=df_features.index)
+
+    for name, model in models.items():
+        try:
+            if name == "LOF":
+                preds = model.fit_predict(df_features)
+            else:
+                preds = model.fit(df_features).predict(df_features)
+
+            if name in ["IsolationForest", "OneClassSVM", "LOF"]:
+                preds = np.where(preds == -1, 1, 0)
+            elif name == "KMeans":
+                counts = np.bincount(preds)
+                anomaly_cluster = np.argmin(counts)
+                preds = np.where(preds == anomaly_cluster, 1, 0)
+
+            unsupervised_preds[name] = preds
+        except Exception as e:
+            logging.warning(f"{name} failed: {e}")
+
+    # Voting: If 2 or more models agree it's an anomaly
+    df_clean["possible_anomaly"] = np.where(unsupervised_preds.sum(axis=1) >= 2, "yes", "no")
+    # ========== END UNSUPERVISED ==========
+    
     try:
         df_clean.to_csv(clean_csv_path, index=False)
-        logging.info(f"Saved cleaned data to {clean_csv_path}, rows: {len(df_clean)}")
+        logging.info(f"Saved cleaned data with anomaly results to {clean_csv_path}, rows: {len(df_clean)}")
     except Exception as e:
         logging.error(f"Failed to write cleaned CSV: {e}")
         raise
+
 
 
 if __name__ == "__main__":
