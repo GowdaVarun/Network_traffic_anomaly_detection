@@ -1,133 +1,95 @@
-/* App.css */
-
-body {
-  margin: 0;
-  padding: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f4f6f8;
-  color: #333;
-}
-
 .App {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
+    max-width: 1100px;
+    margin: 0 auto;
+    font-family: 'Segoe UI', sans-serif;
+    color: #24292f;
+    background: #f8f9fa;
 }
 
 header {
-  text-align: center;
-  margin-bottom: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4em;
+    background: #364fc7;
+    color: #fff;
+    border-radius: 0 0 16px 16px;
+    padding: 1.2em 0 1em 0;
+    position: relative;
 }
 
-header h1 {
-  font-size: 2.2em;
-  margin-bottom: 10px;
-  color: #2c3e50;
+.lang-switcher {
+    position: absolute;
+    top: 1.2em;
+    right: 2em;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
 }
 
-header p {
-  color: #7f8c8d;
-  font-style: italic;
+.lang-switcher select {
+    font-size: 1em;
+    padding: 0.2em 0.4em;
+    border-radius: 0.25em;
+    border: 1px solid #b6b6b6;
 }
 
-/* Metric Cards */
 .metrics {
-  display: flex;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  margin-bottom: 40px;
-  gap: 20px;
+    display: flex;
+    gap: 2em;
+    justify-content: center;
+    margin: 2em 0;
 }
 
 .card {
-  flex: 1 1 22%;
-  background-color: #ffffff;
-  border-radius: 10px;
-  padding: 20px;
-  text-align: center;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
-  transition: transform 0.2s ease;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    padding: 1.5em 2em;
+    min-width: 150px;
+    text-align: center;
 }
 
-.card:hover {
-  transform: translateY(-4px);
-}
-
-.card h3 {
-  color: #2980b9;
-  margin-bottom: 10px;
-}
-
-.card p {
-  font-size: 1.3em;
-  font-weight: bold;
-}
-
-/* Chart Sections */
 .charts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 30px;
-  margin-bottom: 50px;
-  justify-content: space-between;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    gap: 2em;
+    margin-bottom: 2em;
 }
 
 .chart-block {
-  flex: 1 1 30%;
-  background-color: #ffffff;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.2em 2em;
+    min-width: 350px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 
-.chart-block h3 {
-  text-align: center;
-  margin-bottom: 20px;
-  color: #2c3e50;
-}
-
-/* IP Section */
 .ip-section {
-  display: flex;
-  justify-content: space-between;
-  gap: 40px;
-  margin-bottom: 40px;
+    margin: 2em 0;
+    display: flex;
+    justify-content: center;
 }
 
-.ip-lists > div {
-  flex: 1;
-  background-color: #ffffff;
-  border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+.ip-lists {
+    display: flex;
+    gap: 6em;
 }
 
-.ip-lists h4 {
-  border-bottom: 1px solid #e0e0e0;
-  padding-bottom: 10px;
-  margin-bottom: 15px;
-  color: #34495e;
+.ip-lists div {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    padding: 1em 2em;
 }
 
-.ip-lists ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.ip-lists li {
-  padding: 6px 0;
-  border-bottom: 1px dashed #eaeaea;
-  font-size: 0.95em;
-  color: #555;
-}
-
-/* Footer */
 footer {
-  text-align: center;
-  padding: 15px;
-  color: #7f8c8d;
-  font-size: 0.9em;
-  border-top: 1px solid #ddd;
-  margin-top: 40px;
+    margin-top: 2em;
+    padding: 1em 0;
+    text-align: center;
+    background: #dee2e6;
+    border-radius: 14px 14px 0 0;
+    color: #495057;
+    font-size: 1.1em;
 }

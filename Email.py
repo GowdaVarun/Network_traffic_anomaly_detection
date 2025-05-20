@@ -7,32 +7,40 @@ import smtplib
 import os
 import logging
 from dotenv import load_dotenv
+import requests
 
 # Load environment variables
 load_dotenv()
-
-# Configuration constants
-NETWORK_FILE_PATH = "SCAM.json"
-EMAIL_FILE_PATH = "email.json"
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 APP_PASSWORD = os.getenv("APP_PASSWORD")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# Alert templates in multiple languages
-alert_templates = {
+NETWORK_FILE_PATH = "SCAM.json"
+EMAIL_FILE_PATH = "email.json"
+
+# Supported languages for notification
+LANGUAGES = {
+    "en": "English",
+    "kn": "Kannada",
+    "hi": "Hindi"
+}
+
+# Alert type descriptions for the model prompt
+THREAT_TYPE_DESCRIPTIONS = {
     "1": {
-        "en": "⚠️ Detected {count} Port Scanning attempts on your network.",
-        "kn": "⚠️ ನಿಮ್ಮ ಜಾಲದಲ್ಲಿ {count} ಪೋರ್ಟ್ ಸ್ಕ್ಯಾನಿಂಗ್ ಪ್ರಯತ್ನಗಳು ಕಂಡುಬಂದಿವೆ.",
-        "te": "⚠️ మీ నెట్‌వర్క్‌లో {count} పోర్ట్ స్కానింగ్ ప్రయత్నాలు గుర్తించబడ్డాయి."
+        "en": "Port Scanning attempts",
+        "kn": "ಪೋರ್ಟ್ ಸ್ಕ್ಯಾನಿಂಗ್ ಪ್ರಯತ್ನಗಳು",
+        "hi": "पोर्ट स्कैनिंग प्रयास"
     },
     "2": {
-        "en": "🚨 Detected {count} potential Denial of Service (DoS) attacks.",
-        "kn": "🚨 {count} ಸಾಧ್ಯವಿರುವ DoS ದಾಳಿಗಳನ್ನು ಪತ್ತೆಹಚ್ಚಲಾಗಿದೆ.",
-        "te": "🚨 {count} DoS దాడులు గుర్తించబడ్డాయి."
+        "en": "Denial of Service (DoS) attacks",
+        "kn": "DoS ದಾಳಿಗಳು",
+        "hi": "डिनायल ऑफ़ सर्विस (DoS) हमले"
     },
     "3": {
-        "en": "🔐 Detected {count} Brute Force login attempts.",
-        "kn": "🔐 {count} ಬ್ರುಟ್ ಫೋರ್ಸ್ ಲಾಗಿನ್ ಪ್ರಯತ್ನಗಳನ್ನು ಕಂಡುಹಿಡಿಯಲಾಗಿದೆ.",
-        "te": "🔐 {count} బ్రూట్ ఫోర్స్ లాగిన్ ప్రయత్నాలు గుర్తించబడ్డాయి."
+        "en": "Brute Force login attempts",
+        "kn": "ಬ್ರುಟ್ ಫೋರ್ಸ್ ಲಾಗಿನ್ ಪ್ರಯತ್ನಗಳು",
+        "hi": "ब्रूट फोर्स लॉगिन प्रयास"
     }
 }
 
@@ -45,22 +53,64 @@ def load_emails():
         logging.error(f"Error loading emails: {e}")
         return []
 
-def create_multilingual_body(anomalies):
-    """Create email body with alerts in multiple languages"""
-    en_msgs, kn_msgs, te_msgs = [], [], []
-    
-    for key, count in anomalies.items():
-        template = alert_templates.get(str(key))
-        if template:
-            en_msgs.append(template['en'].format(count=count))
-            kn_msgs.append(template['kn'].format(count=count))
-            te_msgs.append(template['te'].format(count=count))
-    
-    return (
-        "📘 English:\n" + "\n".join(en_msgs) + "\n\n"
-        "📗 ಕನ್ನಡ:\n" + "\n".join(kn_msgs) + "\n\n"
-        "📕 తెలుగు:\n" + "\n".join(te_msgs)
+def get_admin_info():
+    """Get admin info for personalization (stub - expand based on your data structure)"""
+    # You can adapt this function if you have admin details in a file or environment variable.
+    return {
+        "name": os.getenv("ADMIN_NAME", "Admin")
+    }
+
+def generate_personalized_message(anomaly_type, count, lang, groq_api_key, context=None):
+    """
+    Generate a personalized, multilingual notification using Groq API.
+    """
+    admin = get_admin_info()
+    threat_desc = THREAT_TYPE_DESCRIPTIONS.get(str(anomaly_type), {}).get(lang, "")
+    base_prompt = (
+        f"Write a concise, urgent, admin-level notification in {LANGUAGES[lang]} about a network security event. "
+        f"The event is: {threat_desc}, occurred {count} time(s). "
+        f"Personalize to admin {admin['name']}. "
+        "Be clear, direct, and use notification tone. Avoid technical jargon beyond necessary context."
     )
+    # Optionally, add more context about the anomaly
+    if context:
+        base_prompt += f" Details: {context}"
+
+    # Groq API (OpenAI compatible)
+    headers = {
+        "Authorization": f"Bearer {groq_api_key}",
+        "Content-Type": "application/json"
+    }
+    data = {
+    "model": "llama3-8b-8192",  # Updated model
+    "messages": [
+        {"role": "system", "content": "You are a multilingual, security-focused alert assistant."},
+        {"role": "user", "content": base_prompt}
+    ],
+    "temperature": 0.5,
+    "max_tokens": 120
+}
+
+    try:
+        response = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data, timeout=10)
+        response.raise_for_status()
+        result = response.json()
+        return result['choices'][0]['message']['content'].strip()
+    except Exception as e:
+        logging.error(f"GROQ API error: {e}")
+        # Fallback to default template message
+        return f"⚠️ {count} {threat_desc} detected. Please check your network."
+
+def create_multilingual_personalized_body(anomalies):
+    """Create a personalized, multilingual email body using Groq API for each detected anomaly."""
+    body = ""
+    for lang in LANGUAGES.keys():
+        lang_section = f"📘 {LANGUAGES[lang]}:\n"
+        for key, count in anomalies.items():
+            msg = generate_personalized_message(key, count, lang, GROQ_API_KEY)
+            lang_section += f"{msg}\n"
+        body += lang_section + "\n"
+    return body.strip()
 
 def send_email(recipient, subject, body):
     """Send an email with the given subject and body to the recipient"""
@@ -69,7 +119,7 @@ def send_email(recipient, subject, body):
     msg["To"] = recipient
     msg["Subject"] = subject
     msg.attach(MIMEText(body, "plain"))
-    
+
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(SENDER_EMAIL, APP_PASSWORD)
@@ -84,7 +134,7 @@ def monitor_and_alert(poll_interval=10, cooldown_minutes=5):
     """Continuously monitor network traffic data and send alerts when anomalies are detected"""
     last_sent_time = None
     logging.info("Monitoring started... Press Ctrl+C to stop.")
-    
+
     while True:
         try:
             with open(NETWORK_FILE_PATH, "r") as f:
@@ -93,30 +143,30 @@ def monitor_and_alert(poll_interval=10, cooldown_minutes=5):
             logging.error(f"Could not read network data: {e}")
             time.sleep(poll_interval)
             continue
-        
+
         summary = data.get("anomaly_summary", {})
         total_anomalies = summary.get("total_anomalies", 0)
         anomalies = summary.get("anomalies_by_type", {})
         now = datetime.now()
-        
+
         if total_anomalies > 0 and anomalies:
             if last_sent_time is None or (now - last_sent_time) > timedelta(minutes=cooldown_minutes):
                 logging.warning(f"{total_anomalies} anomalies detected. Sending alert...")
-                
-                # Compose alert with counts
-                alert_body = create_multilingual_body(anomalies)
+
+                # Compose personalized, multilingual alert
+                alert_body = create_multilingual_personalized_body(anomalies)
                 subject = "🚨 Network Threat Alert"
-                
+
                 for email in load_emails():
                     send_email(email, subject, alert_body)
-                
+
                 last_sent_time = now
                 logging.info(f"Alert sent at {now.strftime('%H:%M:%S')}")
             else:
                 logging.info(f"Alert recently sent, waiting cooldown. ({(now - last_sent_time).seconds}s elapsed)")
         else:
             logging.info(f"[{now.strftime('%H:%M:%S')}] No anomalies detected.")
-        
+
         time.sleep(poll_interval)
 
 def trigger_email():
@@ -124,23 +174,23 @@ def trigger_email():
     try:
         with open(NETWORK_FILE_PATH, "r") as f:
             data = json.load(f)
-            
+
         summary = data.get("anomaly_summary", {})
         total_anomalies = summary.get("total_anomalies", 0)
         anomalies = summary.get("anomalies_by_type", {})
-        
+
         if total_anomalies > 0 and anomalies:
             logging.warning(f"External trigger: {total_anomalies} anomalies detected. Sending alert...")
-            
-            # Compose alert with counts
-            alert_body = create_multilingual_body(anomalies)
+
+            # Compose personalized, multilingual alert
+            alert_body = create_multilingual_personalized_body(anomalies)
             subject = "🚨 Network Threat Alert (Triggered)"
-            
+
             success = True
             for email in load_emails():
                 if not send_email(email, subject, alert_body):
                     success = False
-            
+
             return success
         else:
             logging.info("External trigger: No anomalies to report")
